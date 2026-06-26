@@ -1,0 +1,12 @@
+# Do not edit - changes here will be overwritten by Copier
+_commit: v1
+_src_path: gh:pydev-guide/pyrepo-copier
+author_email: davidetorre99@gmail.com
+author_name: davide torre
+github_username: davidetorre9
+mode: tooling
+module_name: torch_reconstruct_tomogram
+project_name: torch-reconstruct-tomogram
+project_short_description: (sub-)tomogram reconstruction and subtilt extraction for
+    cryoET.
+
