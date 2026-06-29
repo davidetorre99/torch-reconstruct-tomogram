@@ -21,7 +21,10 @@ description = "(sub-)tomogram reconstruction and subtilt extraction for cryoET."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "BSD-3-Clause" }
-authors = [{ name = "Davide Torre", email = "davidetorre99@gmail.com" }]
+authors = [
+    { name = "Marten Chaillet", email = "martenchaillet@gmail.com" },
+    { name = "Davide Torre", email = "davidetorre99@gmail.com" },
+]
 # https://pypi.org/classifiers/
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -35,7 +38,15 @@ classifiers = [
     "Typing :: Typed",
 ]
 # add your package dependencies here
-dependencies = []
+dependencies = [
+    "torch",
+    "einops",
+    "torch-fourier-slice",
+    "torch-fourier-rescale",
+    "torch-ctf",
+    "torch-grid-utils>=0.0.8",
+    "torch-tilt-series",
+]
 
 # https://peps.python.org/pep-0621/#dependencies-optional-dependencies
 # add dependencies for "extra" features here.  Not dev dependencies.

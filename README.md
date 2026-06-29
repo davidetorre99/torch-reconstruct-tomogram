@@ -6,29 +6,35 @@
 [![CI](https://github.com/teamtomo/torch-reconstruct-tomogram/actions/workflows/ci.yml/badge.svg)](https://github.com/teamtomo/torch-reconstruct-tomogram/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/teamtomo/torch-reconstruct-tomogram/branch/main/graph/badge.svg)](https://codecov.io/gh/teamtomo/torch-reconstruct-tomogram)
 
-(sub-)tomogram reconstruction and subtilt extraction for cryoET.
+(sub-)Tomogram reconstruction and subtilt extraction for cryo-ET.
 
-## Development
+## Overview
 
-The easiest way to get started is to use the [github cli](https://cli.github.com)
-and [uv](https://docs.astral.sh/uv/getting-started/installation/):
+This package provides tomogram reconstruction from a [`torch-tilt-series`](https://github.com/teamtomo/torch-tilt-series) `TiltSeries`. It supports
 
-```sh
-gh repo fork teamtomo/torch-reconstruct-tomogram --clone
-# or just
-# gh repo clone teamtomo/torch-reconstruct-tomogram
-cd torch-reconstruct-tomogram
-uv sync
+* `reconstruct_subvolume()` - rank-polymorphic reconstruction of 3D patch(es) at location(s) in the sample
+* `reconstruct_tomogram()` - full volume reconstruction by tiling reconstructed patches in 3D
+
+Reconstruction is performed in Fourier space using central slice insertion. Positions are in `zyx` coordinates, in Angstroms, relative to the tomogram center.
+
+## Installation
+
+```bash
+pip install torch-reconstruct-tomogram
 ```
 
-Run tests:
+This will also install `torch-tilt-series` and its dependencies.
 
-```sh
-uv run pytest
+To load alignment data from AreTomo or ETOMO files, install the IO dependencies for `torch-tilt-series`:
+
+```bash
+pip install torch-tilt-series[io]
 ```
 
-Lint files:
+## Examples
 
-```sh
-uv run pre-commit run --all-files
-```
+See the [`examples/`](examples/) folder for scripts showing how to load a tilt series, reconstruct subvolumes and tomograms, and save the result.
+
+## License
+
+This project is licensed under the BSD 3-Clause License - see the LICENSE file for details.
