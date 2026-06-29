@@ -84,6 +84,11 @@ dev = [
 
 [tool.uv.sources]
 torch-reconstruct-tomogram = { workspace = true }
+# torch-tilt-series is not yet on PyPI (that name currently points to the
+# old torch-tomogram). Resolve it from the teamtomo GitHub repo until released.
+# TODO: remove this source and depend on the PyPI release once torch-tilt-series
+# is published (a git/URL dependency blocks publishing this package to PyPI).
+torch-tilt-series = { git = "https://github.com/teamtomo/torch-tilt-series" }
 
 # https://docs.astral.sh/ruff
 [tool.ruff]
