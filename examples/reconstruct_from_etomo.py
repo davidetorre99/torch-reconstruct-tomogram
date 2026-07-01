@@ -1,9 +1,10 @@
+from pathlib import Path
+
 import mrcfile
 import torch
-from pathlib import Path
 from torch_tilt_series import TiltSeries
-from torch_reconstruct_tomogram import reconstruct_tomogram
 
+from torch_reconstruct_tomogram import reconstruct_tomogram_from_tilt_series
 
 # Path to ETOMO project directory
 ETOMO_DIR = Path("/path/to/etomo/dir")
@@ -24,7 +25,7 @@ tilt_series = TiltSeries.from_etomo_directory(
 # Reconstruct tomogram
 volume_shape = (512, 512, 512)
 sidelength = 128
-tomogram = reconstruct_tomogram(tilt_series, volume_shape, sidelength)
+tomogram = reconstruct_tomogram_from_tilt_series(tilt_series, volume_shape, sidelength)
 
 # Save as MRC file
 output_path = ETOMO_DIR / 'torch_tomogram_reconstruction.mrc'

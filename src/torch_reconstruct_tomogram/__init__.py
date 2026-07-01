@@ -9,9 +9,24 @@ except PackageNotFoundError:
 __author__ = "Marten Chaillet, Davide Torre"
 __email__ = "martenchaillet@gmail.com, davidetorre99@gmail.com"
 
+from torch_reconstruct_tomogram.projection import (
+    extract_particle_tilt_series,
+    project_points,
+)
 from torch_reconstruct_tomogram.reconstruct import (
     reconstruct_subvolume,
     reconstruct_tomogram,
 )
+from torch_reconstruct_tomogram.tilt_series_support import (
+    reconstruct_subvolume_from_tilt_series,
+    reconstruct_tomogram_from_tilt_series,
+)
 
-__all__ = ["reconstruct_subvolume", "reconstruct_tomogram"]
+__all__ = [
+    "extract_particle_tilt_series",
+    "project_points",
+    "reconstruct_subvolume",
+    "reconstruct_subvolume_from_tilt_series",
+    "reconstruct_tomogram",
+    "reconstruct_tomogram_from_tilt_series",
+]

@@ -44,7 +44,8 @@ dependencies = [
     "torch-fourier-rescale",
     "torch-ctf",
     "torch-grid-utils>=0.0.8",
-    "torch-tilt-series",
+    "torch-affine-utils",
+    "torch-subpixel-crop",
 ]
 
 # https://peps.python.org/pep-0621/#dependencies-optional-dependencies
@@ -71,7 +72,10 @@ changelog = "https://github.com/teamtomo/torch-reconstruct-tomogram#changelog"
 # https://peps.python.org/pep-0735/
 # setup with `uv sync` or `pip install -e . --group dev`
 [dependency-groups]
-test = ["pytest", "pytest-cov"]
+# torch-tilt-series is only needed to test the reconstruct_*_from_tilt_series()
+# convenience wrappers against a real TiltSeries; the package itself has no
+# runtime dependency on it.
+test = ["pytest", "pytest-cov", "torch-tilt-series"]
 dev = [
     { include-group = "test" },
     "ipython",

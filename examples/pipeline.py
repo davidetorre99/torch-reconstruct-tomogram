@@ -1,9 +1,14 @@
+from pathlib import Path
+
 import mrcfile
 import torch
-from pathlib import Path
 from torch_tilt_series import TiltSeries
-from torch_reconstruct_tomogram import reconstruct_subvolume, reconstruct_tomogram
 
+from torch_reconstruct_tomogram import (
+    reconstruct_subvolume,
+    reconstruct_subvolume_from_tilt_series,
+    reconstruct_tomogram_from_tilt_series,
+)
 
 # Choose device
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -47,12 +52,23 @@ particle_tilt_series = tilt_series.extract_particle_tilt_series(
 )  # (n_points, n_tilts, 64, 64)
 
 # --- 5. Reconstruct subvolumes at the points -------------------------------
-subvolumes = reconstruct_subvolume(tilt_series, points_zyx, sidelength=64)  # (n_points, 64, 64, 64)
+# torch-reconstruct-tomogram has no dependency on TiltSeries: it takes plain
+# images / projection_matrices / pixel_spacing tensors...
+subvolumes = reconstruct_subvolume(
+    tilt_series.images, tilt_series.projection_matrices, tilt_series.pixel_spacing,
+    points_zyx, sidelength=64,
+)  # (n_points, 64, 64, 64)
+
+# ...or, equivalently, the *_from_tilt_series() convenience wrappers can be used
+# directly on a TiltSeries (or anything with .images/.projection_matrices/pixel_spacing)
+subvolumes = reconstruct_subvolume_from_tilt_series(
+    tilt_series, points_zyx, sidelength=64
+)  # (n_points, 64, 64, 64)
 
 # --- 6. Reconstruct the full tomogram --------------------------------------
 volume_shape = (256, 512, 512)
 sidelength = 128
-tomogram = reconstruct_tomogram(
+tomogram = reconstruct_tomogram_from_tilt_series(
     tilt_series, volume_shape, sidelength, batch_size=None
 )
 

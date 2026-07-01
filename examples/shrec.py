@@ -7,9 +7,9 @@ import einops
 import mrcfile
 import torch
 from torch_fourier_rescale import fourier_rescale_2d
-
 from torch_tilt_series import TiltSeries
-from torch_reconstruct_tomogram import reconstruct_tomogram
+
+from torch_reconstruct_tomogram import reconstruct_tomogram_from_tilt_series
 
 
 def _read_shrec_alignment(file: Path) -> tuple[list]:
@@ -53,7 +53,7 @@ if __name__ == "__main__":
     )  # invert the shifts because we employ a forward projection model!
 
     # 180 is the box size of the grand model
-    volume = reconstruct_tomogram(tilt_series, (180, 512, 512), 128)
+    volume = reconstruct_tomogram_from_tilt_series(tilt_series, (180, 512, 512), 128)
     print(time.time() - start)
 
     with mrcfile.open(model_folder / "grandmodel.mrc", permissive=True) as mrc:
