@@ -4,7 +4,7 @@ import mrcfile
 import torch
 from torch_tilt_series import TiltSeries
 
-from torch_reconstruct_tomogram import reconstruct_tomogram_from_tilt_series
+from torch_reconstruct_tomogram import reconstruct_tomogram
 
 # Paths to AreTomo alignment file and raw tilt stack
 ALN_PATH = Path("/path/to/your/alignment.aln")
@@ -17,7 +17,7 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 # AreTomo .aln files contain shifts in pixels, this converts them to Angstroms
 PIXEL_SPACING = 6.192
 
-# Load tilt series from AreTomo output
+# Load tilt series alignment.
 tilt_series = TiltSeries.from_aretomo_output(
     aln_path=ALN_PATH,
     pixel_spacing=PIXEL_SPACING,
@@ -28,10 +28,10 @@ tilt_series = TiltSeries.from_aretomo_output(
 # Reconstruct tomogram
 volume_shape = (512, 512, 512)
 sidelength = 128
-tomogram = reconstruct_tomogram_from_tilt_series(tilt_series, volume_shape, sidelength)
+tomogram = reconstruct_tomogram(tilt_series, volume_shape, sidelength)
 
 # Save as MRC file
-output_path = ALN_PATH.parent / 'torch_tomogram_reconstruction.mrc'
+output_path = ALN_PATH.parent / "torch_tomogram_reconstruction.mrc"
 mrcfile.write(
     output_path,
     tomogram.cpu().numpy(),

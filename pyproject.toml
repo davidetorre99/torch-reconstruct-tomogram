@@ -44,8 +44,9 @@ dependencies = [
     "torch-fourier-rescale",
     "torch-ctf",
     "torch-grid-utils>=0.0.8",
-    "torch-affine-utils",
     "torch-subpixel-crop",
+    "torch-tilt-series",
+    "mrcfile",
 ]
 
 # https://peps.python.org/pep-0621/#dependencies-optional-dependencies
@@ -72,10 +73,7 @@ changelog = "https://github.com/teamtomo/torch-reconstruct-tomogram#changelog"
 # https://peps.python.org/pep-0735/
 # setup with `uv sync` or `pip install -e . --group dev`
 [dependency-groups]
-# torch-tilt-series is only needed to test the reconstruct_*_from_tilt_series()
-# convenience wrappers against a real TiltSeries; the package itself has no
-# runtime dependency on it.
-test = ["pytest", "pytest-cov", "torch-tilt-series"]
+test = ["pytest", "pytest-cov"]
 dev = [
     { include-group = "test" },
     "ipython",
@@ -89,10 +87,11 @@ dev = [
 [tool.uv.sources]
 torch-reconstruct-tomogram = { workspace = true }
 # torch-tilt-series is not yet on PyPI (that name currently points to the
-# old torch-tomogram). Resolve it from the teamtomo GitHub repo until released.
+# old torch-tomogram).
+#Resolve it from the teamtomo GitHub repo until released.
 # TODO: remove this source and depend on the PyPI release once torch-tilt-series
 # is published (a git/URL dependency blocks publishing this package to PyPI).
-torch-tilt-series = { git = "https://github.com/teamtomo/torch-tilt-series" }
+torch-tilt-series = { path = "../../torch-tilt-series/torch-tilt-series", editable = true }
 
 # https://docs.astral.sh/ruff
 [tool.ruff]
