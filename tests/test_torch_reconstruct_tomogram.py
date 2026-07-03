@@ -4,7 +4,11 @@ import torch
 from torch_tilt_series import TiltSeries
 
 import torch_reconstruct_tomogram
-from torch_reconstruct_tomogram import reconstruct_subvolume, reconstruct_tomogram
+from torch_reconstruct_tomogram import (
+    project_points,
+    reconstruct_subvolume,
+    reconstruct_tomogram,
+)
 
 DEVICES = ["cpu"] + (["cuda"] if torch.cuda.is_available() else [])
 
@@ -104,6 +108,32 @@ def test_reconstruct_subvolume_local_shifts(device, tmp_path):
         local_shifts=zero_local_shifts,
     )
     assert torch.allclose(subvolume_default, subvolume_with_hook)
+
+
+def test_project_points_local_shifts_are_angstroms_not_pixels():
+    # pixel_spacing != 1 so an Angstrom-space shift and a pixel-space shift
+    # would disagree if local_shifts were (still) being applied in pixels.
+    tilt_series = TiltSeries(
+        tilt_angles=torch.tensor([0.0]),
+        tilt_axis_angle=torch.tensor(0.0),
+        sample_translations=torch.zeros((1, 2)),
+        pixel_spacing=2.0,
+    )
+    point = torch.tensor([[0.0, 0.0, 0.0]])
+    shift_ang = torch.tensor([5.0, -3.0])
+
+    def shift_fn(projected_yx_ang):
+        return shift_ang.expand_as(projected_yx_ang)
+
+    shifted_px = project_points(tilt_series, point, local_shifts=shift_fn)
+    unshifted_px = project_points(tilt_series, point)
+    # shift is applied in Angstroms, then the whole result is divided by
+    # pixel_spacing so the pixel-space delta is shift_ang / pixel_spacing,
+    # not shift_ang itself.
+    expected_delta_px = shift_ang / tilt_series.pixel_spacing
+    assert torch.allclose(
+        (shifted_px - unshifted_px)[0, 0], expected_delta_px, atol=1e-5
+    )
 
 
 @pytest.mark.parametrize("device", DEVICES)

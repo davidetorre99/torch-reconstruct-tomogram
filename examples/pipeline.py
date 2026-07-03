@@ -56,12 +56,24 @@ subvolumes = reconstruct_subvolume(
     tilt_series, points_zyx, sidelength=64
 )  # (n_points, 64, 64, 64)
 
-#  5. Reconstruct the full tomogram 
+#  5. Reconstruct the full tomogram
 volume_shape = (256, 512, 512)
 sidelength = 128
 tomogram = reconstruct_tomogram(tilt_series, volume_shape, sidelength, batch_size=None)
 
-#  6. Save the result 
+# Or reconstruct at desired pixel size: output_pixel_spacing targets an arbitrary
+# output voxel size independent of the raw data's, at both the local
+# (reconstruct_subvolume) and global (reconstruct_tomogram) level.
+
+tomogram_binned = reconstruct_tomogram(
+    tilt_series,
+    volume_shape=tuple(s // BIN for s in volume_shape),
+    sidelength=sidelength,
+    output_pixel_spacing=10,
+    batch_size=None,
+)
+
+#  6. Save the result
 output_path = ALN_PATH.parent / "torch_tomogram_reconstruction.mrc"
 mrcfile.write(
     output_path,

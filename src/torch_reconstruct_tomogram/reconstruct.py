@@ -3,7 +3,7 @@
 import einops
 import torch
 import torch.nn.functional as F
-from torch_fourier_rescale import fourier_rescale_3d
+from torch_fourier_rescale import fourier_rescale_rfft_2d
 from torch_fourier_slice import insert_central_slices_rfft_3d_multichannel
 from torch_grid_utils import fftfreq_grid
 from torch_tilt_series import TiltSeries
@@ -16,22 +16,26 @@ from torch_reconstruct_tomogram.io import (
 from torch_reconstruct_tomogram.projection import (
     LocalShiftFn,
     _extract_particle_tilt_series,
-    _require_pixel_spacing,
 )
 
 _PAD_FACTOR = 2.0
 
 
-def _reconstruct_subvolume_at_input_spacing(
+def _reconstruct_subvolume(
     tilt_series: TiltSeries,
     images: torch.Tensor,
     points_zyx: torch.Tensor,
     sidelength: int,
+    output_pixel_spacing: float | None = None,
     local_shifts: LocalShiftFn | None = None,
 ) -> torch.Tensor:
+    """Reconstruct subvolume(s), given already-loaded images."""
     device = images.device
-    points_zyx = torch.as_tensor(_writable(points_zyx), device=device).float()
+    input_pixel_spacing = tilt_series.pixel_spacing  # raises if unset
+    if output_pixel_spacing is None:
+        output_pixel_spacing = input_pixel_spacing
 
+    points_zyx = torch.as_tensor(_writable(points_zyx), device=device).float()
     points_zyx, ps = einops.pack([points_zyx], "* zyx")
 
     # tomogram -> detector rotation: projection_matrices is sample -> detector
@@ -42,18 +46,30 @@ def _reconstruct_subvolume_at_input_spacing(
         tilt_series.projection_matrices[:, :3, :3] @ tilt_series.tomo2sample[:3, :3]
     )
     rotation_matrices = torch.linalg.pinv(rotation_matrices)
-    sidelength_padded = int(_PAD_FACTOR * sidelength)
+
+
+    sidelength_padded_output = int(_PAD_FACTOR * sidelength)
+    sidelength_padded_native = max(
+        1,
+        round(sidelength_padded_output * output_pixel_spacing / input_pixel_spacing),
+    )
 
     particle_tilt_series_rfft = _extract_particle_tilt_series(
         tilt_series,
         images,
         points_zyx,
-        sidelength=sidelength_padded,
+        sidelength=sidelength_padded_native,
         return_rfft=True,
         local_shifts=local_shifts,
     )
 
     particle_tilt_series_rfft = torch.fft.fftshift(particle_tilt_series_rfft, dim=(-2,))
+
+    particle_tilt_series_rfft = fourier_rescale_rfft_2d(
+        dft=particle_tilt_series_rfft,
+        image_shape=(sidelength_padded_native, sidelength_padded_native),
+        target_shape=(sidelength_padded_output, sidelength_padded_output),
+    )
 
     particle_tilt_series_rfft = einops.rearrange(
         particle_tilt_series_rfft,
@@ -62,7 +78,7 @@ def _reconstruct_subvolume_at_input_spacing(
 
     patches_rfft, weights = insert_central_slices_rfft_3d_multichannel(
         image_rfft=particle_tilt_series_rfft,
-        volume_shape=(sidelength_padded, sidelength_padded, sidelength_padded),
+        volume_shape=(sidelength_padded_output,) * 3,
         rotation_matrices=rotation_matrices,
         zyx_matrices=True,
         fftfreq_max=0.5,
@@ -75,14 +91,14 @@ def _reconstruct_subvolume_at_input_spacing(
 
     patches = torch.fft.irfftn(
         patches_rfft,
-        s=(sidelength_padded,) * 3,
+        s=(sidelength_padded_output,) * 3,
         dim=(-3, -2, -1),
     )
 
     patches = torch.fft.ifftshift(patches, dim=(-3, -2, -1))
 
     grid = fftfreq_grid(
-        image_shape=(sidelength_padded, sidelength_padded, sidelength_padded),
+        image_shape=(sidelength_padded_output,) * 3,
         rfft=False,
         fftshift=True,
         norm=True,
@@ -90,52 +106,11 @@ def _reconstruct_subvolume_at_input_spacing(
     )
     patches = patches / torch.sinc(grid) ** 2
 
-    p = (sidelength_padded - sidelength) // 2
+    p = (sidelength_padded_output - sidelength) // 2
     patches = F.pad(patches, [-p] * 6)
 
     [patches] = einops.unpack(patches, ps, "* d h w")
 
-    return patches
-
-
-def _reconstruct_subvolume(
-    tilt_series: TiltSeries,
-    images: torch.Tensor,
-    points_zyx: torch.Tensor,
-    sidelength: int,
-    output_pixel_spacing: float | None = None,
-    local_shifts: LocalShiftFn | None = None,
-) -> torch.Tensor:
-    """Reconstruct subvolume(s), given already-loaded images."""
-    input_pixel_spacing = _require_pixel_spacing(tilt_series)
-    if output_pixel_spacing is None:
-        output_pixel_spacing = input_pixel_spacing
-
-    if output_pixel_spacing == input_pixel_spacing:
-        return _reconstruct_subvolume_at_input_spacing(
-            tilt_series,
-            images,
-            points_zyx,
-            sidelength,
-            local_shifts=local_shifts,
-        )
-
-    sidelength_input = max(
-        1, round(sidelength * output_pixel_spacing / input_pixel_spacing)
-    )
-    patches = _reconstruct_subvolume_at_input_spacing(
-        tilt_series,
-        images,
-        points_zyx,
-        sidelength_input,
-        local_shifts=local_shifts,
-    )
-    target_shape = (sidelength, sidelength, sidelength)
-    patches, _ = fourier_rescale_3d(
-        patches,
-        source_spacing=input_pixel_spacing,
-        target_shape=target_shape,
-    )
     return patches
 
 
@@ -155,15 +130,15 @@ def reconstruct_subvolume(
     - points_zyx are zyx coordinates in Angstroms, relative to the tomogram center
     - sidelength is the output subvolume size in voxels
     - output_pixel_spacing is the voxel size of the output in Angstroms
-      (defaults to `tilt_series.pixel_spacing`); reconstruction happens at the
-      input pixel spacing and the result is Fourier-rescaled to this size, so
-      local (subvolume) and global (tomogram) reconstructions can each target
-      an arbitrary output pixel size independent of the raw data's
+      (defaults to `tilt_series.pixel_spacing`); the per-tilt 2D crops are
+      Fourier-rescaled to this pixel size before 3D reconstruction, so local
+      (subvolume) and global (tomogram) reconstructions can each target an
+      arbitrary output pixel size independent of the raw data's
     - normalize, if True (default), applies `normalize_on_central_crop` to the
       loaded images before reconstruction
-    - local_shifts, if provided, is called with projected 2D pixel positions
-      (n_points, n_tilts, 2) and must return a pixel-space correction of the same
-      shape (e.g. from patch-based local alignment)
+    - local_shifts, if provided, is called with projected 2D positions in
+      Angstroms (n_points, n_tilts, 2) and must return an Angstrom-space
+      correction of the same shape (e.g. from patch-based local alignment)
     """
     images = load_tilt_series_images(tilt_series)
     if normalize:
@@ -203,12 +178,11 @@ def reconstruct_tomogram(
     blend_margin: int | None = None,
 ) -> torch.Tensor:
     """Reconstruct the full tomogram by tiling reconstructed patches in 3D."""
-    
     images = load_tilt_series_images(tilt_series)
     if normalize:
         images = normalize_on_central_crop(images)
 
-    pixel_spacing = _require_pixel_spacing(tilt_series)
+    pixel_spacing = tilt_series.pixel_spacing  # raises if unset
     if output_pixel_spacing is None:
         output_pixel_spacing = pixel_spacing
 

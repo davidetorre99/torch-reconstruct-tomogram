@@ -15,16 +15,6 @@ from torch_reconstruct_tomogram.io import (
 LocalShiftFn = Callable[[torch.Tensor], torch.Tensor]
 
 
-def _require_pixel_spacing(tilt_series: TiltSeries) -> float:
-    if tilt_series.pixel_spacing is None:
-        raise ValueError(
-            "tilt_series.pixel_spacing is not set -> construct the TiltSeries "
-            "via a torch_tilt_series loader (e.g. from_aretomo_output, "
-            "from_etomo_directory), or set it yourself."
-        )
-    return tilt_series.pixel_spacing
-
-
 def project_points(
     tilt_series: TiltSeries,
     points_zyx: torch.Tensor,
@@ -34,19 +24,17 @@ def project_points(
 
     - points are 3D zyx coordinates in Angstroms, relative to the tomogram center
     - tilt_series supplies the projection geometry (`tilt_series.project_points`
-      works in Angstroms) and `tilt_series.pixel_spacing`, used to convert the
-      projected Angstrom positions to pixels
+      works in Angstroms) and `tilt_series.pixel_spacing` (raises if unset),
+      used to convert the projected Angstrom positions to pixels
     - projected 2D points are in pixels, relative to the center of each image
-    - local_shifts, if provided, is called with the projected points
-      (n_points, n_tilts, 2) and must return a correction of the same shape,
-      which is added to the projected points before returning
+    - local_shifts, if provided, is called with the projected points, in
+      Angstroms (n_points, n_tilts, 2), and must return a correction of the
+      same shape, in Angstroms, added before converting to pixels
     """
-    pixel_spacing = _require_pixel_spacing(tilt_series)
     projected_yx_ang = tilt_series.project_points(points_zyx)
-    projected_yx = projected_yx_ang / pixel_spacing
     if local_shifts is not None:
-        projected_yx = projected_yx + local_shifts(projected_yx)
-    return projected_yx  # (points, tilts, yx)
+        projected_yx_ang = projected_yx_ang + local_shifts(projected_yx_ang)
+    return projected_yx_ang / tilt_series.pixel_spacing  # (points, tilts, yx)
 
 
 def _extract_particle_tilt_series(
