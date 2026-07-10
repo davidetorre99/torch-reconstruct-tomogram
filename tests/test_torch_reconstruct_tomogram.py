@@ -202,7 +202,7 @@ def test_reconstruct_subvolume_rotation_includes_tomo2sample(tmp_path, monkeypat
     import torch_reconstruct_tomogram.reconstruct as reconstruct_module
 
     tilt_series = make_tilt_series(tmp_path)
-    tilt_series.sample2tomo = Rz(torch.tensor(37.0), zyx=True, device="cpu")
+    tilt_series.levelled2tomo = Rz(torch.tensor(37.0), zyx=True, device="cpu")
 
     captured = {}
     real_insert = reconstruct_module.insert_central_slices_rfft_3d_multichannel
